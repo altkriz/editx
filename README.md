@@ -1,6 +1,6 @@
 <div align="center">
 
-# ✨ EditX Pro Studio ✨
+# ✨ EditX Pro Studio by Kriztech ✨
 
 ### The Ultimate AI-Powered Web Image Editor
 
