@@ -1,6 +1,6 @@
 <div align="center">
 
-# ✨ EditX
+# ✨ EditX ✨
 
 ### Professional AI-Powered Image Editor
 
