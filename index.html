@@ -28,13 +28,32 @@
     <meta property="twitter:url" content="https://altkriz.github.io/editx/">
     <meta property="twitter:title" content="EditX · Kriztech | AI-Powered Image Studio">
     <meta property="twitter:image" content="https://altkriz.github.io/editx/editorx_banner.png">
-    <link rel="icon" type="image/png" href="https://altkriz.github.io/editx/favicon.png">
-
+    <link rel="manifest" href="./manifest.json">
+    <link rel="apple-touch-icon" href="./favicon.png">
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
+    <!-- ... style ... -->
     <style>
+        /* ... existing styles ... */
+        .layer-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 0.8rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--card-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .layer-item.active {
+            border-color: var(--accent);
+            background: rgba(95, 125, 255, 0.1);
+        }
+
+
         :root {
             --bg-body-dark: radial-gradient(circle at 20% 30%, #0b0f1c, #03050b);
             --card-bg-dark: rgba(18, 22, 40, 0.85);
@@ -96,12 +115,12 @@
             width: 100%;
             max-height: 95vh;
             background: var(--card-bg);
-            backdrop-filter: var(--glass-blur);
             -webkit-backdrop-filter: var(--glass-blur);
+            backdrop-filter: var(--glass-blur);
             border: 1px solid var(--card-border);
             border-radius: 2rem;
             padding: 1.5rem;
-            box-shadow: 0 40px 80px -20px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 40px 80px - 20px rgba(0, 0, 0, 0.5);
             display: flex;
             flex-direction: column;
             gap: 1rem;
@@ -115,6 +134,7 @@
             inset: 0;
             z-index: 50;
             background: rgba(95, 125, 255, 0.15);
+            -webkit-backdrop-filter: blur(4px);
             backdrop-filter: blur(4px);
             border: 2px dashed var(--accent);
             border-radius: 2rem;
@@ -129,7 +149,7 @@
             transition: 0.2s;
         }
 
-        .drag-active .drag-overlay {
+        .drag-active.drag-overlay {
             opacity: 1;
             pointer-events: all;
         }
@@ -147,6 +167,7 @@
             font-weight: 800;
             background: linear-gradient(135deg, #fff, #aebaff);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
             filter: drop-shadow(0 0 15px rgba(95, 125, 255, 0.4));
         }
@@ -154,6 +175,7 @@
         body.light-mode .logo-glow {
             background: linear-gradient(135deg, #3f5ae0, #2638a8);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
             filter: none;
         }
@@ -168,7 +190,7 @@
             overflow: hidden;
         }
 
-        @media (max-width: 900px) {
+        @media(max-width: 900px) {
             .main-layout {
                 grid-template-columns: 1fr;
                 overflow-y: auto;
@@ -246,7 +268,7 @@
             cursor: grabbing;
         }
 
-        body.light-mode .canvas-container {
+        body.light-mode.canvas-container {
             background-color: #f8fafc;
         }
 
@@ -262,6 +284,7 @@
             bottom: 1rem;
             right: 1rem;
             background: rgba(0, 0, 0, 0.6);
+            -webkit-backdrop-filter: blur(4px);
             backdrop-filter: blur(4px);
             padding: 0.4rem;
             border-radius: 2rem;
@@ -377,6 +400,7 @@
 
         input[type=range]::-webkit-slider-thumb {
             -webkit-appearance: none;
+            appearance: none;
             width: 16px;
             height: 16px;
             border-radius: 50%;
@@ -446,6 +470,7 @@
             display: none;
             align-items: center;
             justify-content: center;
+            -webkit-backdrop-filter: blur(5px);
             backdrop-filter: blur(5px);
         }
 
@@ -456,7 +481,7 @@
             width: 90%;
             max-width: 400px;
             border: 1px solid #2f3b68;
-            box-shadow: 0 50px 100px -20px rgba(0, 0, 0, 0.7);
+            box-shadow: 0 50px 100px - 20px rgba(0, 0, 0, 0.7);
         }
 
         /* SVG Filter Hidden */
@@ -473,6 +498,9 @@
     <!-- SVG Filters for RGB/Grain -->
     <svg class="svg-filters">
         <defs>
+            <filter id="sharpen">
+                <feConvolveMatrix id="sharpen-matrix" order="3" kernelMatrix="0 0 0 0 1 0 0 0 0" />
+            </filter>
             <filter id="grain">
                 <feTurbulence type="fractalNoise" baseFrequency="0.80" numOctaves="3" stitchTiles="stitch" />
                 <feColorMatrix type="saturate" values="0" />
@@ -536,7 +564,7 @@
                 </div>
             </div>
             <div class="flex gap-3">
-                <button class="icon-btn" id="themeToggle"><i class="fa-solid fa-moon"></i></button>
+                <button class="icon-btn" id="themeToggle" title="Toggle Theme"><i class="fa-solid fa-moon"></i></button>
                 <button
                     class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-full font-semibold shadow-lg shadow-blue-500/20 transition flex items-center gap-2"
                     onclick="openExport()">
@@ -571,10 +599,10 @@
                     <canvas id="canvas"></canvas>
                     <div class="zoom-controls">
                         <button class="icon-btn w-8 h-8 rounded-full bg-transparent text-white"
-                            onclick="adjustZoom(-0.1)"><i class="fa-solid fa-minus"></i></button>
+                            onclick="adjustZoom(-0.1)" title="Zoom Out"><i class="fa-solid fa-minus"></i></button>
                         <span class="text-xs text-white self-center w-12 text-center" id="zoomVal">100%</span>
                         <button class="icon-btn w-8 h-8 rounded-full bg-transparent text-white"
-                            onclick="adjustZoom(0.1)"><i class="fa-solid fa-plus"></i></button>
+                            onclick="adjustZoom(0.1)" title="Zoom In"><i class="fa-solid fa-plus"></i></button>
                         <button class="icon-btn w-8 h-8 rounded-full bg-transparent text-white" onclick="fitZoom()"
                             title="Fit"><i class="fa-solid fa-expand"></i></button>
                     </div>
@@ -597,28 +625,30 @@
                         <div class="group-label"><i class="fa-solid fa-sun"></i> Light</div>
                         <div class="slider-wrap">
                             <div class="slider-header"><span>Brightness</span><span id="val_brightness">0</span></div>
-                            <input type="range" data-filter="brightness" min="-100" max="100" value="0">
+                            <input type="range" data-filter="brightness" min="-100" max="100" value="0"
+                                title="Brightness">
                         </div>
                         <div class="slider-wrap">
                             <div class="slider-header"><span>Contrast</span><span id="val_contrast">0</span></div>
-                            <input type="range" data-filter="contrast" min="-100" max="100" value="0">
+                            <input type="range" data-filter="contrast" min="-100" max="100" value="0" title="Contrast">
                         </div>
                         <div class="slider-wrap">
                             <div class="slider-header"><span>Saturation</span><span id="val_saturation">0</span></div>
-                            <input type="range" data-filter="saturation" min="-100" max="100" value="0">
+                            <input type="range" data-filter="saturation" min="-100" max="100" value="0"
+                                title="Saturation">
                         </div>
                     </div>
 
                     <div class="control-group">
                         <div class="group-label"><i class="fa-solid fa-crop"></i> Geometry</div>
                         <div class="grid grid-cols-4 gap-2 mb-4">
-                            <button class="tool-btn" onclick="rotate(-90)"><i
+                            <button class="tool-btn" onclick="rotate(-90)" title="Rotate Left"><i
                                     class="fa-solid fa-rotate-left"></i></button>
-                            <button class="tool-btn" onclick="rotate(90)"><i
+                            <button class="tool-btn" onclick="rotate(90)" title="Rotate Right"><i
                                     class="fa-solid fa-rotate-right"></i></button>
-                            <button class="tool-btn" onclick="flip('h')"><i
+                            <button class="tool-btn" onclick="flip('h')" title="Flip Horizontal"><i
                                     class="fa-solid fa-arrows-left-right"></i></button>
-                            <button class="tool-btn" onclick="flip('v')"><i
+                            <button class="tool-btn" onclick="flip('v')" title="Flip Vertical"><i
                                     class="fa-solid fa-arrows-up-down"></i></button>
                         </div>
                         <div class="flex gap-2 justify-center">
@@ -650,6 +680,10 @@
                         <div class="slider-wrap">
                             <div class="slider-header"><span>Blur</span><span id="val_blur">0</span></div>
                             <input type="range" data-filter="blur" min="0" max="20" value="0">
+                        </div>
+                        <div class="slider-wrap">
+                            <div class="slider-header"><span>Sharpness</span><span id="val_sharpen">0</span></div>
+                            <input type="range" data-filter="sharpen" min="0" max="100" value="0">
                         </div>
                     </div>
 
@@ -721,6 +755,8 @@
                     </div>
                 </div>
 
+
+
                 <!-- Presets Tab -->
                 <div class="tab-content" id="presets">
                     <div class="preset-grid">
@@ -766,6 +802,17 @@
                         </button>
                         <p class="text-xs text-center mt-2 text-gray-500">AI processing happens locally.</p>
                     </div>
+
+                    <div class="control-group">
+                        <div class="group-label"><i class="fa-regular fa-face-smile-beam"></i> Face Retouch</div>
+                        <div class="slider-wrap">
+                            <div class="slider-header"><span>Skin Smooth</span><span id="val_smooth">0</span></div>
+                            <input type="range" id="faceSmooth" min="0" max="100" value="0">
+                        </div>
+                        <button class="tool-btn primary" id="applyFaceBtn">
+                            <i class="fa-solid fa-sparkles"></i> Apply Beauty Filter
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -775,27 +822,139 @@
         // --- STATE ---
         const state = {
             img: null,
-            filters: { brightness: 0, contrast: 0, saturation: 0, blur: 0, vignette: 0, noise: 0, red: 0, green: 0, blue: 0 },
+            filters: { brightness: 0, contrast: 0, saturation: 0, blur: 0, sharpen: 0, vignette: 0, noise: 0, red: 0, green: 0, blue: 0 },
             rotation: 0, flipH: 1, flipV: 1,
-            layers: [], strokes: [],
+            layers: [], // {id, type, visible, opacity, ... }
+            strokes: [],
             zoom: 1, pan: { x: 0, y: 0 },
             activeTool: 'move',
             brush: { color: '#ffcc00', size: 5 },
             history: [], historyIndex: -1,
-            aiMode: 'transparent'
+            aiMode: 'transparent',
+            cropMode: false,
+            cropRect: null
         };
 
-        function setAiMode(mode) {
-            state.aiMode = mode;
-            document.querySelectorAll('.ai-opt').forEach(b => {
-                b.classList.remove('active', 'border-blue-500', 'text-blue-500');
-                b.classList.add('border-gray-700', 'text-gray-400');
-            });
-            event.target.classList.add('active', 'border-blue-500', 'text-blue-500');
-            event.target.classList.remove('border-gray-700', 'text-gray-400');
+        // --- SHORTCUTS ---
+        document.addEventListener('keydown', e => {
+            if (e.ctrlKey && (e.key === 'z' || e.key === 'Z')) {
+                e.preventDefault(); undo();
+            }
+            if (e.ctrlKey && (e.key === 'y' || e.key === 'Y')) {
+                e.preventDefault(); redo();
+            }
+            if (e.key === '[') {
+                const s = Math.max(1, parseInt(document.getElementById('brushSize').value) - 2);
+                document.getElementById('brushSize').value = s;
+                state.brush.size = s;
+                document.getElementById('val_brushSize').innerText = s;
+            }
+            if (e.key === ']') {
+                const s = Math.min(50, parseInt(document.getElementById('brushSize').value) + 2);
+                document.getElementById('brushSize').value = s;
+                state.brush.size = s;
+                document.getElementById('val_brushSize').innerText = s;
+            }
+        });
 
-            document.getElementById('aiColorPicker').style.display = mode === 'color' ? 'block' : 'none';
+
+        // --- FACE RETOUCH ---
+        // Listener moved to init()
+
+
+        async function runFaceAI() {
+            if (!state.img) return alert("No image found!");
+            const btn = document.getElementById('applyFaceBtn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Analyzing...';
+            btn.disabled = true;
+
+            try {
+                const faceMesh = new FaceMesh({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}` });
+                faceMesh.setOptions({ maxNumFaces: 1, refineLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+
+                faceMesh.onResults(results => {
+                    if (!results.multiFaceLandmarks || results.multiFaceLandmarks.length === 0) {
+                        alert("No face detected!");
+                        btn.innerHTML = originalText;
+                        btn.disabled = false;
+                        return;
+                    }
+                    // Apply Blur (Smoothing)
+                    saveHistory();
+
+                    // 1. Draw original to temp canvas
+                    const mCanvas = document.createElement('canvas');
+                    mCanvas.width = state.img.width; mCanvas.height = state.img.height;
+                    const mCtx = mCanvas.getContext('2d');
+                    mCtx.drawImage(state.img, 0, 0);
+
+                    // 2. Create Face Mask
+                    const maskCanvas = document.createElement('canvas');
+                    maskCanvas.width = mCanvas.width; maskCanvas.height = mCanvas.height;
+                    const maskCtx = maskCanvas.getContext('2d');
+                    maskCtx.fillStyle = 'black';
+                    maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
+                    maskCtx.fillStyle = 'white';
+
+                    const landmarks = results.multiFaceLandmarks[0];
+
+                    // Draw face hull (simplified for perf-cheek/chin area)
+                    maskCtx.beginPath();
+                    // Roughly face contour points from MediaPipe FaceMesh
+                    const indices = [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109];
+                    indices.forEach((id, i) => {
+                        const x = landmarks[id].x * maskCanvas.width;
+                        const y = landmarks[id].y * maskCanvas.height;
+                        if (i === 0) maskCtx.moveTo(x, y);
+                        else maskCtx.lineTo(x, y);
+                    });
+                    maskCtx.closePath();
+                    maskCtx.fill();
+                    maskCtx.filter = 'blur(10px)'; // Feather mask
+
+                    // 3. Create Blurred Face Skin
+                    const blurCanvas = document.createElement('canvas');
+                    blurCanvas.width = mCanvas.width; blurCanvas.height = mCanvas.height;
+                    const bCtx = blurCanvas.getContext('2d');
+                    bCtx.filter = 'blur(5px)'; // Skin smoothing amount
+                    bCtx.drawImage(state.img, 0, 0);
+                    bCtx.filter = 'none';
+
+                    // 4. Composite: Draw blurred face ONLY where mask is white
+                    bCtx.globalCompositeOperation = 'destination-in';
+                    bCtx.drawImage(maskCanvas, 0, 0);
+
+                    // 5. Draw smoothed face on top of original
+                    mCtx.globalCompositeOperation = 'source-over';
+                    mCtx.globalAlpha = 0.6; // Opacity of smoothing
+                    mCtx.drawImage(blurCanvas, 0, 0);
+
+                    // Done
+                    const newImg = new Image();
+                    newImg.src = mCanvas.toDataURL();
+                    newImg.onload = () => {
+                        state.img = newImg;
+                        render();
+                        saveHistory();
+                        btn.innerHTML = originalText;
+                        btn.disabled = false;
+                    };
+                });
+
+                await faceMesh.send({ image: state.img });
+
+            } catch (e) {
+                alert("Face AI Error: " + e);
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
         }
+
+        // --- INTERACTIVE CROP (Simplified for V2) ---
+        // For now, we will add a 'custom crop' tool that just prompts for ratio or uses a visual overlay if time.
+        // Let's stick to the crop(ratio) functionality but improve it to be safer?
+        // Actually, let's implement the layer visibility check in render() now.
 
         // --- DOM ---
         const canvas = document.getElementById('canvas');
@@ -805,7 +964,7 @@
         // ... (Init function remains same)
 
         // --- AI ---
-        document.getElementById('removeBgBtn').addEventListener('click', runAI);
+        // Listener moved to init()
 
         async function runAI() {
             if (!state.img) return alert("Please upload an image first.");
@@ -841,7 +1000,7 @@
                         mCtx.globalCompositeOperation = 'destination-in';
                         mCtx.drawImage(res.segmentationMask, 0, 0, mCanvas.width, mCanvas.height);
                     } else {
-                        // For color mode: 
+                        // For color mode:
                         // 1. Draw solid color (done)
                         // 2. Draw person on top? No, we need to cut out the person from original and place on color.
                         // Better approach:
@@ -937,6 +1096,7 @@
 
             // AI
             document.getElementById('removeBgBtn').addEventListener('click', runAI);
+            document.getElementById('applyFaceBtn').addEventListener('click', runFaceAI);
 
             // Theme
             document.getElementById('themeToggle').addEventListener('click', () => document.body.classList.toggle('light-mode'));
@@ -972,7 +1132,7 @@
         }
 
         function resetState() {
-            state.filters = { brightness: 0, contrast: 0, saturation: 0, blur: 0, vignette: 0, noise: 0, red: 0, green: 0, blue: 0 };
+            state.filters = { brightness: 0, contrast: 0, saturation: 0, blur: 0, sharpen: 0, vignette: 0, noise: 0, red: 0, green: 0, blue: 0 };
             state.rotation = 0; state.flipH = 1; state.flipV = 1;
             state.layers = [];
             state.strokes = [];
@@ -1004,6 +1164,22 @@
             const sat = 100 + f.saturation;
             const blur = f.blur;
             ctx.filter = `brightness(${bright}%) contrast(${cont}%) saturate(${sat}%) blur(${blur}px)`;
+
+            // Sharpen (SVG)
+            if (f.sharpen > 0) {
+                const amount = f.sharpen / 100; // 0 to 1
+                // Simple sharpen kernel:
+                // 0  -k  0
+                // -k 1+4k -k
+                // 0  -k  0
+                // We'll scale k. Let's say max k=1 (pretty strong)
+                const k = amount * 1.5;
+                const center = 1 + 4 * k;
+                const matrix = `0 ${-k} 0 ${-k} ${center} ${-k} 0 ${-k} 0`;
+                const svgM = document.getElementById('sharpen-matrix');
+                if (svgM) svgM.setAttribute('kernelMatrix', matrix);
+                ctx.filter += ' url(#sharpen)';
+            }
 
             // Draw Base Image
             ctx.drawImage(state.img, -state.img.width / 2, -state.img.height / 2);
@@ -1055,17 +1231,23 @@
             });
 
             // 6. Layers (Text, Stickers)
+            // 6. Layers (Text, Stickers)
             state.layers.forEach(layer => {
+                if (layer.visible === false) return;
+
+                ctx.save();
+                ctx.globalAlpha = layer.opacity !== undefined ? layer.opacity : 1;
+
                 if (layer.type === 'text') {
                     ctx.font = `${layer.size}px ${layer.font}`;
                     ctx.fillStyle = layer.color;
                     ctx.shadowColor = 'rgba(0,0,0,0.5)';
                     ctx.shadowBlur = 4;
                     ctx.fillText(layer.text, layer.x, layer.y);
-                    ctx.shadowBlur = 0;
                 } else if (layer.type === 'sticker') {
                     ctx.drawImage(layer.img, layer.x, layer.y, layer.w, layer.h);
                 }
+                ctx.restore();
             });
 
             ctx.restore();
@@ -1098,7 +1280,9 @@
                 font: font,
                 size: size,
                 x: state.img.width / 2 - 50,
-                y: state.img.height / 2
+                y: state.img.height / 2,
+                opacity: 1,
+                visible: true
             });
             render();
             saveHistory();
@@ -1118,7 +1302,9 @@
                         img: sImg,
                         x: state.img.width / 2 - w / 2,
                         y: state.img.height / 2 - h / 2,
-                        w: w, h: h
+                        w: w, h: h,
+                        opacity: 1,
+                        visible: true
                     });
                     render();
                     saveHistory();
@@ -1233,7 +1419,7 @@
 
             state.filters = {
                 brightness: 0, contrast: 0, saturation: 0,
-                blur: 0, vignette: 0, noise: 0,
+                blur: 0, sharpen: 0, vignette: 0, noise: 0,
                 red: 0, green: 0, blue: 0
             };
 
@@ -1268,6 +1454,29 @@
             saveHistory();
         }
 
+
+
+        // --- AI MODE ---
+        function setAiMode(mode) {
+            state.aiMode = mode;
+            document.querySelectorAll('.ai-opt').forEach(btn => {
+                btn.classList.remove('active', 'border-blue-500', 'text-blue-500');
+                btn.classList.add('border-gray-700', 'text-gray-400');
+            });
+
+            // Find the button that was clicked - simpler to just re-select based on mode
+            const buttons = document.querySelectorAll('.ai-opt');
+            if (mode === 'transparent') {
+                buttons[0].classList.add('active', 'border-blue-500', 'text-blue-500');
+                buttons[0].classList.remove('border-gray-700', 'text-gray-400');
+                document.getElementById('aiColorPicker').classList.add('hidden');
+            } else {
+                buttons[1].classList.add('active', 'border-blue-500', 'text-blue-500');
+                buttons[1].classList.remove('border-gray-700', 'text-gray-400');
+                document.getElementById('aiColorPicker').classList.remove('hidden');
+            }
+        }
+
         // --- HISTORY ---
         function saveHistory() {
             const snapshot = JSON.parse(JSON.stringify({
@@ -1276,7 +1485,8 @@
                 flipH: state.flipH,
                 flipV: state.flipV,
                 layers: state.layers,
-                strokes: state.strokes
+                strokes: state.strokes,
+                imgSrc: state.img ? state.img.src : null
             }));
 
             // Only push if different from current tip? (Deep compare expensive).
@@ -1311,8 +1521,8 @@
             state.rotation = snap.rotation; state.flipH = snap.flipH; state.flipV = snap.flipV;
             state.layers = snap.layers;
             state.strokes = snap.strokes;
-            render();
             updateUndoRedo();
+
             // Sync UI
             Object.keys(state.filters).forEach(k => {
                 const el = document.querySelector(`input[data-filter="${k}"]`);
@@ -1321,6 +1531,24 @@
                     document.getElementById('val_' + k).innerText = state.filters[k];
                 }
             });
+
+            // Restore Image if changed
+            if (snap.imgSrc && (!state.img || state.img.src !== snap.imgSrc)) {
+                const img = new Image();
+                img.onload = () => {
+                    state.img = img;
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    render();
+                    fitZoom();
+                };
+                img.src = snap.imgSrc;
+            } else if (!snap.imgSrc) {
+                state.img = null;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            } else {
+                render();
+            }
         }
 
         function updateUndoRedo() {
@@ -1395,63 +1623,7 @@
             };
         }
 
-        async function runAI(btn) {
-            if (!state.img) return;
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-            btn.disabled = true;
 
-            try {
-                // Similar logic to previous, apply mask to Base Image
-                const selfieSegmentation = new SelfieSegmentation({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}` });
-                selfieSegmentation.setOptions({ modelSelection: 1 });
-                selfieSegmentation.onResults(res => {
-                    const mCanvas = document.createElement('canvas');
-                    mCanvas.width = state.img.width; mCanvas.height = state.img.height;
-                    const mCtx = mCanvas.getContext('2d');
-
-                    if (state.aiMode === 'color') {
-                        // 1. Create a cutout of the person
-                        const cutout = document.createElement('canvas');
-                        cutout.width = mCanvas.width; cutout.height = mCanvas.height;
-                        const cCtx = cutout.getContext('2d');
-                        cCtx.drawImage(state.img, 0, 0);
-                        cCtx.globalCompositeOperation = 'destination-in';
-                        cCtx.drawImage(res.segmentationMask, 0, 0, mCanvas.width, mCanvas.height);
-
-                        // 2. Fill background
-                        mCtx.fillStyle = document.getElementById('aiBgColor').value;
-                        mCtx.fillRect(0, 0, mCanvas.width, mCanvas.height);
-
-                        // 3. Draw cutout on top
-                        mCtx.drawImage(cutout, 0, 0);
-                    } else {
-                        // Transparent Mode
-                        mCtx.drawImage(state.img, 0, 0);
-                        mCtx.globalCompositeOperation = 'destination-in';
-                        mCtx.drawImage(res.segmentationMask, 0, 0, mCanvas.width, mCanvas.height);
-                    }
-
-                    const newImg = new Image();
-                    newImg.src = mCanvas.toDataURL();
-                    newImg.onload = () => {
-                        // Save history before applying new image?
-                        // Actually, we should save current state first.
-                        state.img = newImg;
-                        render();
-                        saveHistory();
-
-                        btn.innerHTML = originalText;
-                        btn.disabled = false;
-                    };
-                });
-                await selfieSegmentation.send({ image: state.img });
-            } catch (e) {
-                alert("AI Error: " + e);
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }
-        }
 
         // --- EVENT LAYERS ---
         // Re-attach listeners for export buttons (in case they were missed)
@@ -1467,6 +1639,11 @@
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 resetState();
             }
+        }
+
+        // PWA Registration
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./service-worker.js').then(() => console.log('Service Worker Registered'));
         }
 
         init();
