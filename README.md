@@ -47,7 +47,7 @@ From quick touch-ups to complex creative compositions, EditX provides a suite of
 
 ### **2. Advanced Adjustments**
 
-- 🎛️ **Professional Grading**: Fine-tune Brightness, Contrast, Saturation, and Blur.
+- 🎛️ **Professional Grading**: Fine-tune Brightness, Contrast, Saturation, Blur, and Sharpness.
 - � **RGB Channel Mixer**: Adjust Red, Green, and Blue channels independently for color correction or artistic effects.
 - 🌑 **Vignette & Grain**: Add film-like atmosphere with customizable vignette intensity and noise generation.
 - � **Geometry**: Rotate, Flip Horizontal/Vertical, and Crop (Square, 16:9, 4:3) with ease.
@@ -74,12 +74,37 @@ Instantly transform the mood of your photos with our curated filters:
 - ↩️ **History**: Robust Undo/Redo system that tracks every change, including presets and AI edits.
 - 🌗 **Theming**: Toggle between a crisp Light Mode and a sleek Dark Mode.
 
+## 🛠️ Recent Updates (Feb 2026)
+
+### Cross-Browser Compatibility
+
+- Added `-webkit-backdrop-filter` for **Safari / iOS Safari** support across all glassmorphism elements (editor card, drag overlay, zoom controls, export modal).
+- Added standard `background-clip: text` alongside `-webkit-background-clip` for logo gradient text.
+- Fixed `backdrop-filter` property ordering — vendor prefix now correctly listed before the standard property.
+- Added standard `appearance: none` alongside `-webkit-appearance` on range input thumbs.
+
+### CSS Bug Fixes
+
+- Fixed `box-sizing` typo (`box- sizing` → `box-sizing`) that broke the universal reset rule.
+- Fixed `::-webkit-slider-thumb` pseudo-element selector (had a stray space: `:: -webkit-slider-thumb`).
+
+### Accessibility (a11y)
+
+- Added `title` attributes to icon-only buttons: Theme Toggle, Zoom In/Out, Rotate Left/Right, Flip Horizontal/Vertical.
+- Added `title` attributes to unlabelled range inputs: Brightness, Contrast, Saturation.
+- Ensures screen readers and accessibility tools can identify all interactive elements.
+
+### PWA & SEO
+
+- Added `<link rel="apple-touch-icon">` for iOS home screen icon support.
+
 ## 💻 Tech Stack
 
 - **Core**: HTML5, Vanilla JavaScript (ES6+)
-- **Styling**: TailwindCSS, FontAwesome 6
+- **Styling**: TailwindCSS, Custom CSS, FontAwesome 6
 - **AI Engine**: MediaPipe Selfie Segmentation
 - **Architecture**: Single Page Application (SPA), Client-Side Rendering
+- **Compatibility**: Cross-browser (Chrome, Firefox, Safari, Edge, iOS Safari)
 
 ---
 
@@ -87,6 +112,6 @@ Instantly transform the mood of your photos with our curated filters:
 
 ### Built with ❤️ by [Kriztech](https://kriztech.in)
 
-<sub>© 2024 EditX. All rights reserved.</sub>
+<sub>© 2024–2026 EditX. All rights reserved.</sub>
 
 </div>
