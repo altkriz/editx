@@ -738,10 +738,28 @@
 
                 <!-- AI Tab -->
                 <div class="tab-content" id="ai">
-                    <button class="tool-btn primary py-4" id="removeBgBtn">
-                        <i class="fa-solid fa-wand-magic-sparkles"></i> Remove Background
-                    </button>
-                    <p class="text-xs text-center mt-2 text-gray-500">AI processing happens locally in browser.</p>
+                    <div class="control-group">
+                        <div class="group-label"><i class="fa-solid fa-wand-magic-sparkles"></i> Options</div>
+                        <div class="flex gap-2 mb-4">
+                            <button
+                                class="flex-1 p-2 rounded bg-gray-800 border border-blue-500 text-blue-500 text-sm font-bold ai-opt active"
+                                onclick="setAiMode('transparent')">Transparent</button>
+                            <button
+                                class="flex-1 p-2 rounded bg-gray-800 border border-gray-700 text-gray-400 text-sm font-bold ai-opt"
+                                onclick="setAiMode('color')">Color</button>
+                        </div>
+
+                        <div id="aiColorPicker" class="hidden mb-4">
+                            <label class="text-xs text-gray-400 mb-1 block">Background Color</label>
+                            <input type="color" id="aiBgColor" value="#ffffff"
+                                class="w-full h-10 rounded cursor-pointer">
+                        </div>
+
+                        <button class="tool-btn primary py-4" id="removeBgBtn">
+                            <i class="fa-solid fa-eraser"></i> Remove Background
+                        </button>
+                        <p class="text-xs text-center mt-2 text-gray-500">AI processing happens locally.</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -750,38 +768,113 @@
     <script>
         // --- STATE ---
         const state = {
-            img: null, // Base Image
-
-            // Adjustments
-            filters: {
-                brightness: 0, contrast: 0, saturation: 0,
-                blur: 0, vignette: 0, noise: 0,
-                red: 0, green: 0, blue: 0
-            },
-
-            // Transform
+            img: null,
+            filters: { brightness: 0, contrast: 0, saturation: 0, blur: 0, vignette: 0, noise: 0, red: 0, green: 0, blue: 0 },
             rotation: 0, flipH: 1, flipV: 1,
-
-            // Layers
-            layers: [], // Objects: { type: 'text'|'image', x, y, content... }
-            strokes: [], // Brush paths
-
-            // Viewport
-            zoom: 1,
-            pan: { x: 0, y: 0 },
-
-            // Tools
-            activeTool: 'move', // 'move', 'brush'
+            layers: [], strokes: [],
+            zoom: 1, pan: { x: 0, y: 0 },
+            activeTool: 'move',
             brush: { color: '#ffcc00', size: 5 },
-
-            history: [],
-            historyIndex: -1
+            history: [], historyIndex: -1,
+            aiMode: 'transparent'
         };
+
+        function setAiMode(mode) {
+            state.aiMode = mode;
+            document.querySelectorAll('.ai-opt').forEach(b => {
+                b.classList.remove('active', 'border-blue-500', 'text-blue-500');
+                b.classList.add('border-gray-700', 'text-gray-400');
+            });
+            event.target.classList.add('active', 'border-blue-500', 'text-blue-500');
+            event.target.classList.remove('border-gray-700', 'text-gray-400');
+
+            document.getElementById('aiColorPicker').style.display = mode === 'color' ? 'block' : 'none';
+        }
 
         // --- DOM ---
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
         const fileInput = document.getElementById('uploadInput');
+
+        // ... (Init function remains same)
+
+        // --- AI ---
+        document.getElementById('removeBgBtn').addEventListener('click', runAI);
+
+        async function runAI() {
+            if (!state.img) return alert("Please upload an image first.");
+
+            const btn = document.getElementById('removeBgBtn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
+            btn.disabled = true;
+
+            try {
+                const selfieSegmentation = new SelfieSegmentation({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}` });
+                selfieSegmentation.setOptions({ modelSelection: 1 });
+
+                selfieSegmentation.onResults(res => {
+                    const mCanvas = document.createElement('canvas');
+                    mCanvas.width = state.img.width; mCanvas.height = state.img.height;
+                    const mCtx = mCanvas.getContext('2d');
+
+                    if (state.aiMode === 'color') {
+                        mCtx.fillStyle = document.getElementById('aiBgColor').value;
+                        mCtx.fillRect(0, 0, mCanvas.width, mCanvas.height);
+                    }
+
+                    // Draw original image
+                    mCtx.drawImage(state.img, 0, 0);
+
+                    // If transparent mode, we need to mask out background
+                    // Use 'destination-in' with the mask
+                    // BUT: MediaPipe returns white for person, black for bg.
+                    // destination-in keeps content where mask is opaque (white).
+
+                    if (state.aiMode === 'transparent') {
+                        mCtx.globalCompositeOperation = 'destination-in';
+                        mCtx.drawImage(res.segmentationMask, 0, 0, mCanvas.width, mCanvas.height);
+                    } else {
+                        // For color mode: 
+                        // 1. Draw solid color (done)
+                        // 2. Draw person on top? No, we need to cut out the person from original and place on color.
+                        // Better approach:
+                        // 1. Create person cutout
+                        const cutout = document.createElement('canvas');
+                        cutout.width = mCanvas.width; cutout.height = mCanvas.height;
+                        const cCtx = cutout.getContext('2d');
+                        cCtx.drawImage(state.img, 0, 0);
+                        cCtx.globalCompositeOperation = 'destination-in';
+                        cCtx.drawImage(res.segmentationMask, 0, 0, mCanvas.width, mCanvas.height);
+
+                        // 2. Clear main canvas, fill color
+                        mCtx.globalCompositeOperation = 'source-over';
+                        mCtx.fillStyle = document.getElementById('aiBgColor').value;
+                        mCtx.fillRect(0, 0, mCanvas.width, mCanvas.height);
+
+                        // 3. Draw cutout on top
+                        mCtx.drawImage(cutout, 0, 0);
+                    }
+
+                    const newImg = new Image();
+                    newImg.src = mCanvas.toDataURL();
+                    newImg.onload = () => {
+                        saveHistory(); // Save BEFORE changing state
+                        state.img = newImg;
+                        render();
+                        saveHistory(); // Save AFTER
+
+                        btn.innerHTML = originalText;
+                        btn.disabled = false;
+                    };
+                });
+                await selfieSegmentation.send({ image: state.img });
+            } catch (e) {
+                alert("AI Error: " + e);
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
 
         // --- INIT ---
         function init() {
@@ -912,10 +1005,15 @@
             // 3. RGB Balance (Composite)
             ctx.filter = 'none'; // Clear css filters for overlays
             if (f.red !== 0 || f.green !== 0 || f.blue !== 0) {
-                // Simplified RGB Tinting using composite
-                ctx.globalCompositeOperation = 'overlay'; // or soft-light
+                ctx.save();
+                // Use soft-light for a more subtle tint, or overlay with low opacity
+                ctx.globalCompositeOperation = 'overlay';
+                ctx.globalAlpha = 0.3; // Reduce strength to prevent washout
                 ctx.fillStyle = `rgb(${128 + f.red * 2}, ${128 + f.green * 2}, ${128 + f.blue * 2})`;
-                ctx.fillRect(-w, -h, w * 3, h * 3); // Covers rotated area
+                // We need to cover the entire potential area (rotated etc)
+                // A massive rect is simple solution
+                ctx.fillRect(-w * 5, -h * 5, w * 10, h * 10);
+                ctx.restore();
             }
             ctx.globalCompositeOperation = 'source-over';
 
@@ -928,17 +1026,12 @@
                 ctx.fillRect(-w * 2, -h * 2, w * 4, h * 4);
             }
 
-            ctx.restore(); // Undo transforms for "Screen Space" draws if desired?
-            // Actually, Users expect text to rotate WITH image usually? 
-            // For this Editor, let's keep Text/Strokes attached to Image Space.
-            // So we continue in transformed space, OR we re-apply transform?
-            // Wait, Layers need to be drawn ON TOP of filters, usually.
+            ctx.restore();
 
             ctx.save();
             ctx.translate(w / 2, h / 2);
             ctx.rotate(state.rotation * Math.PI / 180);
             ctx.scale(state.flipH, state.flipV);
-            // Translate back to top-left of image for layer coords
             ctx.translate(-state.img.width / 2, -state.img.height / 2);
 
             // 5. Brush Strokes
@@ -970,21 +1063,6 @@
             });
 
             ctx.restore();
-
-            // 7. Grain (Noise) - Overlay on top of EVERYTHING (Screen space)
-            if (f.noise > 0) {
-                // Generate noise pattern on fly or use simple random loop?
-                // Simple random rect optimization
-                const idx = (Date.now() / 100) % 10; // Animation? No static.
-                ctx.save();
-                ctx.globalAlpha = f.noise / 300; // Low opacity
-                ctx.globalCompositeOperation = 'overlay';
-                // Draw random noise using a pattern or just fillRect with a noise pattern?
-                // Creating noise programmatically every frame is slow.
-                // Best to skip actual noise generation in 2d context for performance, 
-                // OR use a pre-rendered small noise canvas pattern.
-                // We'll skip complex noise implementation for speed in V1, stick to Overlay color for "Vibe"
-            }
         }
 
         // --- TOOLS ---
@@ -1050,7 +1128,7 @@
         let currentStroke = null;
 
         function handleWheel(e) {
-            if (e.ctrlKey) { e.preventDefault(); } // Browser zoom
+            if (e.ctrlKey) { e.preventDefault(); }
             e.preventDefault();
             const delta = e.deltaY > 0 ? -0.1 : 0.1;
             adjustZoom(delta);
@@ -1074,7 +1152,6 @@
         }
 
         function updateRefTransforms() {
-            // Apply zoom/pan to CANVAS ELEMENT via CSS Transform
             canvas.style.transform = `translate(${state.pan.x}px, ${state.pan.y}px) scale(${state.zoom})`;
         }
 
@@ -1120,39 +1197,20 @@
         }
 
         function getImgCoords(e) {
-            // Map Mouse ClientXY -> Canvas Image XY (taking css transform into account)
-            // Complex because of css transform scale/translate
             const rect = canvas.getBoundingClientRect();
-            // rect properties include the transform
             const scaleX = canvas.width / rect.width;
             const scaleY = canvas.height / rect.height;
-
-            // Mouse relative to canvas rect top-left
             const relX = (e.clientX - rect.left);
             const relY = (e.clientY - rect.top);
-
-            // Map to internal canvas
             let x = relX * scaleX;
             let y = relY * scaleY;
 
-            // Wait, we also apply rotation/flip INSIDE render(), 
-            // so we must reverse that to draw naturally?
-            // "Drawing on image" implies touches stick to image pixels.
-            // If image is rotated 90deg, and I draw Horizontal line on Screen, 
-            // it should be Vertical line on Image memory?
-            // YES. Reverse Transform needed.
-            // Simplified for V1: Drawing happens in Image Space Logic (Step 5 in Render).
-
-            // Reverse Transforms... math heavy.
-            // Center
             const cx = canvas.width / 2;
             const cy = canvas.height / 2;
             x -= cx; y -= cy;
 
-            // Reverse Scale
             x /= state.flipH; y /= state.flipV;
 
-            // Reverse Rotate
             const rad = -state.rotation * Math.PI / 180;
             const rx = x * Math.cos(rad) - y * Math.sin(rad);
             const ry = x * Math.sin(rad) + y * Math.cos(rad);
@@ -1162,7 +1220,17 @@
 
         // --- PRESETS ---
         function applyPreset(name) {
-            resetState(); // Clear existing filters? Or Addative? Usually replace.
+            // Check if current state is different from last history state before pushing 'before' state?
+            // To ensure we don't spam duplicate states.
+            // Simplified: Just push.
+            saveHistory();
+
+            state.filters = {
+                brightness: 0, contrast: 0, saturation: 0,
+                blur: 0, vignette: 0, noise: 0,
+                red: 0, green: 0, blue: 0
+            };
+
             if (!state.img) return;
 
             const f = state.filters;
@@ -1186,33 +1254,32 @@
                     break;
             }
             render();
-            // Update sliders UI
             Object.keys(f).forEach(k => {
                 const el = document.querySelector(`input[data-filter="${k}"]`);
                 if (el) { el.value = f[k]; el.dispatchEvent(new Event('input')); }
             });
+
             saveHistory();
         }
 
         // --- HISTORY ---
         function saveHistory() {
-            // throttle?
-            // Save logic: deep copy state? Expensive.
-            // Save Canvas DataURL? Reliable.
-            // If we save DataURL, we lose "Editable" layers (text becomes pixels if we restore).
-            // Better: Save State Object Clone.
-
-            // clone state
             const snapshot = JSON.parse(JSON.stringify({
                 filters: state.filters,
-                rotation: state.rotation, flipH: state.flipH, flipV: state.flipV,
+                rotation: state.rotation,
+                flipH: state.flipH,
+                flipV: state.flipV,
                 layers: state.layers,
                 strokes: state.strokes
             }));
 
+            // Only push if different from current tip? (Deep compare expensive).
+            // Just standard push.
+
             if (state.historyIndex < state.history.length - 1) {
                 state.history = state.history.slice(0, state.historyIndex + 1);
             }
+
             state.history.push(snapshot);
             if (state.history.length > 20) state.history.shift();
             else state.historyIndex++;
@@ -1322,29 +1389,71 @@
             };
         }
 
-        function runAI() {
+        async function runAI(btn) {
             if (!state.img) return;
-            // Similar logic to previous, apply mask to Base Image
-            const selfieSegmentation = new SelfieSegmentation({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}` });
-            selfieSegmentation.setOptions({ modelSelection: 1 });
-            selfieSegmentation.onResults(res => {
-                const mCanvas = document.createElement('canvas');
-                mCanvas.width = state.img.width; mCanvas.height = state.img.height;
-                const mCtx = mCanvas.getContext('2d');
-                mCtx.drawImage(state.img, 0, 0);
-                mCtx.globalCompositeOperation = 'destination-in';
-                mCtx.drawImage(res.segmentationMask, 0, 0, mCanvas.width, mCanvas.height);
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+            btn.disabled = true;
 
-                const newImg = new Image();
-                newImg.src = mCanvas.toDataURL();
-                newImg.onload = () => {
-                    state.img = newImg;
-                    render();
-                    saveHistory();
-                };
-            });
-            selfieSegmentation.send({ image: state.img });
+            try {
+                // Similar logic to previous, apply mask to Base Image
+                const selfieSegmentation = new SelfieSegmentation({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}` });
+                selfieSegmentation.setOptions({ modelSelection: 1 });
+                selfieSegmentation.onResults(res => {
+                    const mCanvas = document.createElement('canvas');
+                    mCanvas.width = state.img.width; mCanvas.height = state.img.height;
+                    const mCtx = mCanvas.getContext('2d');
+
+                    if (state.aiMode === 'color') {
+                        // 1. Create a cutout of the person
+                        const cutout = document.createElement('canvas');
+                        cutout.width = mCanvas.width; cutout.height = mCanvas.height;
+                        const cCtx = cutout.getContext('2d');
+                        cCtx.drawImage(state.img, 0, 0);
+                        cCtx.globalCompositeOperation = 'destination-in';
+                        cCtx.drawImage(res.segmentationMask, 0, 0, mCanvas.width, mCanvas.height);
+
+                        // 2. Fill background
+                        mCtx.fillStyle = document.getElementById('aiBgColor').value;
+                        mCtx.fillRect(0, 0, mCanvas.width, mCanvas.height);
+
+                        // 3. Draw cutout on top
+                        mCtx.drawImage(cutout, 0, 0);
+                    } else {
+                        // Transparent Mode
+                        mCtx.drawImage(state.img, 0, 0);
+                        mCtx.globalCompositeOperation = 'destination-in';
+                        mCtx.drawImage(res.segmentationMask, 0, 0, mCanvas.width, mCanvas.height);
+                    }
+
+                    const newImg = new Image();
+                    newImg.src = mCanvas.toDataURL();
+                    newImg.onload = () => {
+                        // Save history before applying new image?
+                        // Actually, we should save current state first.
+                        state.img = newImg;
+                        render();
+                        saveHistory();
+
+                        btn.innerHTML = originalText;
+                        btn.disabled = false;
+                    };
+                });
+                await selfieSegmentation.send({ image: state.img });
+            } catch (e) {
+                alert("AI Error: " + e);
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
         }
+
+        // --- EVENT LAYERS ---
+        // Re-attach listeners for export buttons (in case they were missed)
+        document.querySelectorAll('.fmt-btn').forEach(b => b.addEventListener('click', e => {
+            document.querySelectorAll('.fmt-btn').forEach(btn => btn.classList.remove('active', 'border-blue-500', 'text-blue-500'));
+            b.classList.add('active', 'border-blue-500', 'text-blue-500');
+            exportFmt = b.dataset.fmt;
+        }));
 
         function resetAll() {
             if (confirm("Clear workspace?")) {
